@@ -1,0 +1,223 @@
+--created a subquery to count ride_id as all_trips and counted "member_casual" into two new columns, then in the parent query I calculated the percentages totals of the new "member" and "casual" columns as percentages.  
+
+SELECT 
+  TotalTrips,
+        TotalMemberTrips,
+        TotalCasualTrips,
+        ROUND(TotalMemberTrips/TotalTrips,2)*100 AS MemberPercentage,
+        ROUND(TotalCasualTrips/TotalTrips,2)*100 AS CasualPercentage
+FROM (
+        SELECT COUNT(ride_id) AS TotalTrips,
+               COUNTIF(member_casual = 'member') AS TotalMemberTrips,
+               COUNTIF(member_casual = 'casual') AS TotalCasualTrips,
+        FROM
+            `case-study-1-362014.bikeshare.all_data` )
+
+
+
+--created a statement that shows AVERAGE ride_duration time on customer type
+
+SELECT 
+	member_casual, AVG(ride_duration) AS Avg_ride_duration
+FROM 
+	`case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+	member_casual
+
+
+
+--created a statement that shows AVERAGE ride_duration per day of week based on customer type
+
+SELECT 
+  member_casual, 
+  AVG(ride_duration) AS Avg_ride_duration,
+  day_of_week
+FROM
+   `case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+   member_casual,
+   day_of_week
+ORDER BY 
+   Avg_ride_duration DESC
+    
+
+
+--created a statement that shows AVERAGE ride_duration per month based on customer type
+
+SELECT 
+   member_casual, 
+   AVG(ride_duration) AS Avg_ride_duration,
+   ride_month
+FROM
+   `case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+    member_casual,
+    ride_month
+ORDER BY 
+    Avg_ride_duration DESC
+
+
+
+--created a statement that shows MEDIAN ride_length instead of the AVERAGE (MEDIAN shows results that remove extreme measurements from the dataset)
+
+SELECT
+   DISTINCT median_ride_length,
+   member_casual
+FROM 
+        (
+        SELECT 
+              ride_id,
+              member_casual,
+              ride_length,
+              PERCENTILE_DISC(ride_length, 0.5 IGNORE NULLS) OVER(PARTITION BY member_casual) AS median_ride_length
+        FROM `case-study-1-362014.bikeshare.all_data`
+        )
+ORDER BY 
+      median_ride_length DESC LIMIT 2
+      
+
+
+--created a statement that shows MEDIAN ride_length based on the day of week and membership type
+--MEDIAN of "member"
+
+SELECT
+        DISTINCT median_ride_length,
+        member_casual,
+        day_of_week
+FROM 
+        (
+        SELECT 
+                ride_id,
+                member_casual,
+                day_of_week,
+                ride_length,
+                PERCENTILE_DISC(ride_length, 0.5 IGNORE NULLS) OVER(PARTITION BY day_of_week) AS  median_ride_length
+        FROM 
+               `case-study-1-362014.bikeshare.all_data`
+        WHERE
+                member_casual = 'member'
+        )
+ORDER BY 
+        median_ride_length DESC LIMIT 7
+
+
+
+--MEDIAN of "casual"
+
+SELECT
+        DISTINCT median_ride_length,
+        member_casual,
+        day_of_week
+FROM 
+        (
+        SELECT 
+                ride_id,
+                member_casual,
+                day_of_week,
+                ride_length,
+                PERCENTILE_DISC(ride_length, 0.5 IGNORE NULLS) OVER(PARTITION BY day_of_week) AS  median_ride_length
+        FROM 
+               `case-study-1-362014.bikeshare.all_data`
+        WHERE
+                member_casual = 'casual'
+        )
+ORDER BY 
+        median_ride_length DESC LIMIT 7
+
+
+
+--created a statment that shows number of rides based on "day_of_week", "rideable_type", and "member_casual"
+SELECT  day_of_week,
+        COUNT(DISTINCT ride_id) AS total_trips,
+        SUM(CASE WHEN member_casual = 'member' THEN 1 ELSE 0 END) AS MemberTrips,
+        SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END) AS CasualTrips, 
+        SUM(CASE WHEN rideable_type = 'electric_bike' THEN 1 ELSE 0 END) AS electric,
+        SUM(CASE WHEN rideable_type = 'classic_bike' THEN 1 ELSE 0 END) AS classic,
+FROM `case-study-1-362014.bikeshare.all_data`
+GROUP BY 1
+ORDER BY total_trips DESC LIMIT 7
+
+
+
+--created a statement that shows number of rides based on "ride_month" and "member_casual" (in ascending order of Num_of_rides)
+
+SELECT member_casual, ride_month, COUNT(member_casual) AS Num_of_rides
+FROM `case-study-1-362014.bikeshare.all_data`
+GROUP BY ride_month, member_casual
+ORDER BY member_casual,(Num_of_rides)DESC
+
+
+
+--created a statement that shows customer type vs bike type
+
+SELECT member_casual, count(rideable_type) as total,
+SUM(CASE WHEN rideable_type = 'classic_bike' THEN 1 ELSE 0 END) AS classic,
+SUM(CASE WHEN rideable_type = 'electric_bike' THEN 1 ELSE 0 END) AS electric, 
+FROM `case-study-1-362014.bikeshare.all_data`
+GROUP BY member_casual
+
+
+
+--created a statement that shows customer use based on day of the week
+
+SELECT day_of_week, count(member_casual) as total,
+SUM(CASE WHEN member_casual = 'member' THEN 1 ELSE 0 END) AS MemberTrips,
+SUM(CASE WHEN member_casual = 'casual' THEN 1 ELSE 0 END) AS CasualTrips, 
+FROM `case-study-1-362014.bikeshare.all_data`
+GROUP BY day_of_week
+
+
+
+--examined bike type compared with day of the week
+
+SELECT day_of_week, count(rideable_type) as total,
+SUM(CASE WHEN rideable_type = 'classic_bike' THEN 1 ELSE 0 END) AS classic,
+SUM(CASE WHEN rideable_type = 'electric_bike' THEN 1 ELSE 0 END) AS electric, 
+FROM `case-study-1-362014.bikeshare.all_data`
+GROUP BY day_of_week
+
+
+
+--examined the top ten start stations and ordered results based on "member" or "casual"
+
+SELECT 
+        DISTINCT start_station_name,
+        SUM(
+            CASE WHEN ride_id = ride_id AND start_station_name = start_station_name THEN 1 ELSE 0 END
+            ) AS total,
+        SUM(
+            CASE WHEN member_casual = 'member' AND start_station_name = start_station_name THEN 1 ELSE 0 END
+            ) AS member,
+        SUM(
+            CASE WHEN member_casual = 'casual' AND start_station_name = start_station_name THEN 1 ELSE 0 END
+            ) AS casual
+FROM 
+        `case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+        start_station_name
+ORDER BY 
+        casual DESC
+        limit 10
+
+---
+
+SELECT 
+        DISTINCT start_station_name,
+        SUM(
+            CASE WHEN ride_id = ride_id AND start_station_name = start_station_name THEN 1 ELSE 0 END
+            ) AS total,
+        SUM(
+            CASE WHEN member_casual = 'member' AND start_station_name = start_station_name THEN 1 ELSE 0 END
+            ) AS member,
+        SUM(
+            CASE WHEN member_casual = 'casual' AND start_station_name = start_station_name THEN 1 ELSE 0 END
+            ) AS casual
+FROM 
+        `case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+        start_station_name
+ORDER BY 
+        member DESC
+        limit 10
+
+      
