@@ -1,0 +1,213 @@
+--Uploaded and formatted the data into tables using Bigquery, Below is the lookup and union of each separate table. 
+--I exported the union into a new table in Bigquery under the name "all_data_union" 
+--in the next steps I'll proceed to sort, filter, and clean the data for further analysis.
+
+SELECT *
+FROM `case-study-1-362014.bikeshare.data1`
+UNION ALL
+SELECT *
+FROM `case-study-1-362014.bikeshare.data2`
+UNION ALL
+SELECT *
+FROM `case-study-1-362014.bikeshare.data3`
+UNION ALL
+SELECT *
+FROM `case-study-1-362014.bikeshare.data4`
+UNION ALL
+SELECT *
+FROM `case-study-1-362014.bikeshare.data5`
+UNION ALL
+SELECT *
+FROM `case-study-1-362014.bikeshare.data6`
+
+
+
+--checked for duplicate rows by examining total_rows "compared" with "distinct_rows"
+
+select (SELECT COUNT(1) FROM (select distinct * from `case-study-1-362014.bikeshare.all_data_union`)) as distinct_rows,
+  (SELECT COUNT(1) FROM `case-study-1-362014.bikeshare.all_data_union`) as total_rows
+
+
+
+--created a select statement to remove any duplictaes and show only distinct values of the data
+
+SELECT DISTINCT * 
+FROM `case-study-1-362014.bikeshare.all_data_union`
+
+
+
+--testing the table to see where the null values exist.
+
+SELECT column_name, COUNT(1) AS nulls_count
+FROM `case-study-1-362014.bikeshare.all_data_union`,
+UNNEST(REGEXP_EXTRACT_ALL(TO_JSON_STRING(`case-study-1-362014.bikeshare.all_data_union`), r'"(\w+)":null')) column_name
+GROUP BY column_name
+ORDER BY nulls_count DESC
+
+
+
+--I ended up with nulls in the following columns 
+
+end_station_name 
+end_station_id	
+start_station_name 	
+start_station_id 
+
+
+
+--Removed the the nulls from the original 1973410 rows of data and was left with 1690175 remaining rows.
+
+DELETE FROM `case-study-1-362014.bikeshare.all_data_union` 
+WHERE start_station_name IS NULL;
+
+DELETE FROM `case-study-1-362014.bikeshare.all_data_union` 
+WHERE start_station_id IS NULL;
+
+DELETE FROM `case-study-1-362014.bikeshare.all_data_union` 
+WHERE end_station_name IS NULL;
+
+DELETE FROM `case-study-1-362014.bikeshare.all_data_union` 
+WHERE end_station_id IS NULL;
+
+
+
+--filtering out test rides that lasted under a minute
+
+SELECT * 
+        FROM `case-study-1-362014.bikeshare.all_data_union_cleaned`
+        WHERE 
+            start_station_name NOT LIKE '%TEST%' 
+        AND start_station_name NOT LIKE '%TEMP%'
+        AND start_station_name NOT LIKE '%CHECKING%'
+        AND start_station_name NOT LIKE '%*%'
+        AND end_station_name NOT LIKE '%TEST%' 
+        AND end_station_name NOT LIKE '%TEMP%'
+        AND end_station_name NOT LIKE '%CHECKING%'
+        AND end_station_name NOT LIKE '%*%'
+        AND ride_duration >1 
+
+
+
+--checked which type of bikes were in the data 
+--crossexamined the number of rides in comparison with types of memberships and bikes
+--removed "docked_bike" data due to being skewed and unreliable (docked bikes were only being used by casual customers, how does a customer use a docked bike?)
+
+SELECT rideable_type, count(1) 
+    from `case-study-1-362014.bikeshare.all_data`
+    group by rideable_type
+
+
+SELECT rideable_type, COUNT (rideable_type) AS rideable, member_casual
+FROM `case-study-1-362014.bikeshare.all_data`
+GROUP BY rideable_type, member_casual
+
+
+DELETE 
+FROM `case-study-1-362014.bikeshare.all_data`
+WHERE rideable_type = "docked_bike"
+
+
+--wrote a statement which counted every start/end station for the bikes, in total it returned 692 distinct stations
+
+SELECT DISTINCT start_station_name, count(1) as rides
+    from `case-study-1-362014.bikeshare.all_data`
+    group by start_station_name
+    order by start_station_name asc
+
+
+
+1973410 rows of orignal data
+283235 rows deleted due to null values 
+1690175 rows after removing nulls
+1660900 rows after filtering rides that lasted under a minute
+137634 rows deleted due to docked bike
+1523266 rows after removing docked bikes
+(docked bikes were removed because over 90% of the customers were casual, leading me to believe the data may have been entered wrong or was biased. How does one ride a docked bike?)
+
+
+
+--casting day_of_week as a string instead of an integer.
+
+select cast(day_of_week AS STRING) AS day_of_week
+from `case-study-1-362014.bikeshare.all_data_union`
+
+
+
+--created columns for ride_month, ride_duration
+
+SELECT * EXCEPT (day_of_week),
+        DATETIME_DIFF(ended_at, started_at,minute) AS ride_duration,
+        EXTRACT(month FROM started_at) AS ride_month,
+        CASE
+            WHEN day_of_week = 1 THEN "Sunday"
+            WHEN day_of_week = 2 THEN "Monday"
+            WHEN day_of_week = 3 THEN "Tuesday"
+            WHEN day_of_week = 4 THEN "Wednesday"
+            WHEN day_of_week = 5 THEN "Thursday"
+            WHEN day_of_week = 6 THEN "Friday"
+        ELSE "Saturday"
+        END AS day_of_week
+    FROM 
+        `case-study-1-362014.bikeshare.all_data_union`
+
+
+
+--using '% ', ' %' to check for spaces in values
+
+SELECT *
+FROM 
+	`case-study-1-362014.bikeshare.all_data_union_cleaned`
+WHERE 
+	rideable_type LIKE ' %' OR rideable_type LIKE '% '
+OR 
+	start_station_name LIKE ' %' OR rideable_type LIKE '% '
+OR 
+	end_station_name LIKE ' %' OR rideable_type LIKE '% ';
+
+
+
+--checking for mispelled words in rideable_type, member_casual
+
+SELECT 
+	rideable_type,member_casual
+FROM 
+	`case-study-1-362014.bikeshare.all_data_union_cleaned`
+GROUP BY 
+	rideable_type, member_casual;
+
+
+
+--updated and saved the current data and dropped any old tables (new table is called "all_data")
+
+drop table `case-study-1-362014.bikeshare.all_data_union`
+
+
+
+--checked what the MIN and MAX values of "ride_length" were using the functions below 
+
+SELECT 
+        member_casual,
+        MAX(ride_length) AS ride_length_MAX
+FROM 
+        `case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+        member_casual
+ORDER BY 
+        ride_length_MAX DESC
+LIMIT 
+        2
+
+--
+
+SELECT 
+        member_casual,
+        MIN(ride_length) AS ride_length_MIN
+FROM 
+        `case-study-1-362014.bikeshare.all_data`
+GROUP BY 
+        member_casual
+ORDER BY 
+        ride_length_MIN DESC
+LIMIT 
+        2
+
