@@ -1,5 +1,6 @@
 # Google-Data-Analytics-Capstone-Project-Cyclistic
 Cyclistic case study
+
 -For the Google Data Analytics Capstone project, I decided to work on the Cyclistic  bike share case study. For this case study, I performed the real-world tasks of a junior data analyst for the marketing team at Cyclistic, a bike-share company in Chicago.
 
 -I followed the six steps of the data analysis process which consist of: Ask, Prepare, Process, Analyze, Share and Act.
