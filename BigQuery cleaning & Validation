@@ -3,22 +3,22 @@
 --in the next steps I'll proceed to sort, filter, and clean the data for further analysis.
 
 SELECT *
-FROM `case-study-1-362014.bikeshare.data1`
+FROM `case-study-1-362014.bikeshare.data 1`
 UNION ALL
 SELECT *
-FROM `case-study-1-362014.bikeshare.data2`
+FROM `case-study-1-362014.bikeshare.data 2`
 UNION ALL
 SELECT *
-FROM `case-study-1-362014.bikeshare.data3`
+FROM `case-study-1-362014.bikeshare.data 3`
 UNION ALL
 SELECT *
-FROM `case-study-1-362014.bikeshare.data4`
+FROM `case-study-1-362014.bikeshare.data 4`
 UNION ALL
 SELECT *
-FROM `case-study-1-362014.bikeshare.data5`
+FROM `case-study-1-362014.bikeshare.data 5`
 UNION ALL
 SELECT *
-FROM `case-study-1-362014.bikeshare.data6`
+FROM `case-study-1-362014.bikeshare.data 6`
 
 
 
@@ -52,10 +52,12 @@ end_station_name
 end_station_id	
 start_station_name 	
 start_station_id 
+end_lat
+end_lng
 
 
 
---Removed the the nulls from the original 1973410 rows of data and was left with 1690175 remaining rows.
+--Removed the the nulls from the original 1972106 rows of data and was left with 1689076 remaining rows.
 
 DELETE FROM `case-study-1-362014.bikeshare.all_data_union` 
 WHERE start_station_name IS NULL;
@@ -69,67 +71,11 @@ WHERE end_station_name IS NULL;
 DELETE FROM `case-study-1-362014.bikeshare.all_data_union` 
 WHERE end_station_id IS NULL;
 
+DELETE FROM `case-study-1-362014.bikeshare.all_data_union`
+WHERE end_lat IS NULL;
 
-
---filtering out test rides that lasted under a minute
-
-SELECT * 
-        FROM `case-study-1-362014.bikeshare.all_data_union_cleaned`
-        WHERE 
-            start_station_name NOT LIKE '%TEST%' 
-        AND start_station_name NOT LIKE '%TEMP%'
-        AND start_station_name NOT LIKE '%CHECKING%'
-        AND start_station_name NOT LIKE '%*%'
-        AND end_station_name NOT LIKE '%TEST%' 
-        AND end_station_name NOT LIKE '%TEMP%'
-        AND end_station_name NOT LIKE '%CHECKING%'
-        AND end_station_name NOT LIKE '%*%'
-        AND ride_duration >1 
-
-
-
---checked which type of bikes were in the data 
---crossexamined the number of rides in comparison with types of memberships and bikes
---removed "docked_bike" data due to being skewed and unreliable (docked bikes were only being used by casual customers, how does a customer use a docked bike?)
-
-SELECT rideable_type, count(1) 
-    from `case-study-1-362014.bikeshare.all_data`
-    group by rideable_type
-
-
-SELECT rideable_type, COUNT (rideable_type) AS rideable, member_casual
-FROM `case-study-1-362014.bikeshare.all_data`
-GROUP BY rideable_type, member_casual
-
-
-DELETE 
-FROM `case-study-1-362014.bikeshare.all_data`
-WHERE rideable_type = "docked_bike"
-
-
---wrote a statement which counted every start/end station for the bikes, in total it returned 692 distinct stations
-
-SELECT DISTINCT start_station_name, count(1) as rides
-    from `case-study-1-362014.bikeshare.all_data`
-    group by start_station_name
-    order by start_station_name asc
-
-
-
-1973410 rows of orignal data
-283235 rows deleted due to null values 
-1690175 rows after removing nulls
-1660900 rows after filtering rides that lasted under a minute
-137634 rows deleted due to docked bike
-1523266 rows after removing docked bikes
-(docked bikes were removed because over 90% of the customers were casual, leading me to believe the data may have been entered wrong or was biased. How does one ride a docked bike?)
-
-
-
---casting day_of_week as a string instead of an integer.
-
-select cast(day_of_week AS STRING) AS day_of_week
-from `case-study-1-362014.bikeshare.all_data_union`
+DELETE FROM `case-study-1-362014.bikeshare.all_data_union`
+WHERE end_lng IS NULL;
 
 
 
@@ -149,6 +95,73 @@ SELECT * EXCEPT (day_of_week),
         END AS day_of_week
     FROM 
         `case-study-1-362014.bikeshare.all_data_union`
+
+
+
+--filtering out test rides that lasted under a minute
+
+SELECT * 
+        FROM `case-study-1-362014.bikeshare.all_data_union`
+        WHERE 
+            start_station_name NOT LIKE '%TEST%' 
+        AND start_station_name NOT LIKE '%TEMP%'
+        AND start_station_name NOT LIKE '%CHECKING%'
+        AND start_station_name NOT LIKE '%*%'
+        AND end_station_name NOT LIKE '%TEST%' 
+        AND end_station_name NOT LIKE '%TEMP%'
+        AND end_station_name NOT LIKE '%CHECKING%'
+        AND end_station_name NOT LIKE '%*%'
+        AND ride_duration >1 
+
+
+
+--checked which type of bikes were in the data 
+
+SELECT rideable_type, count(1) 
+    from `case-study-1-362014.bikeshare.all_data_union`
+    group by rideable_type
+
+
+
+--crossexamined the number of rides in comparison with types of memberships and bikes
+
+SELECT rideable_type, COUNT (rideable_type) AS rideable, member_casual
+FROM `case-study-1-362014.bikeshare.all_data_union`
+GROUP BY rideable_type, member_casual
+
+
+
+--removed "docked_bike" data due to being skewed and unreliable (docked bikes were only being used by casual customers, how does a customer use a docked bike?)
+
+DELETE 
+FROM `case-study-1-362014.bikeshare.all_data_union`
+WHERE rideable_type = "docked_bike"
+
+
+--wrote a statement which counted stations for the bikes and quantity of rides, in total it returned 695 distinct stations
+
+SELECT DISTINCT start_station_name, count(1) as rides
+    from `case-study-1-362014.bikeshare.all_data_union`
+    group by start_station_name
+    order by rides desc
+
+
+
+1972106 rows of orignal data
+283030 rows deleted due to null values 
+1689076 rows after removing nulls
+28073 rows deleted due to rides lasting under a minute 
+1661003 rows after filtering rides that lasted under a minute
+138731 rows deleted due to docked bike
+1522272 rows after removing docked bikes
+(docked bikes were removed because over 90% of the customers were casual, leading me to believe the data may have been entered wrong or was biased. How does one ride a docked bike?)
+
+
+
+--casting day_of_week as a string instead of an integer.
+
+select cast(day_of_week AS STRING) AS day_of_week
+from `case-study-1-362014.bikeshare.all_data_union`
 
 
 
@@ -177,7 +190,7 @@ GROUP BY
 
 
 
---updated and saved the current data and dropped any old tables (new table is called "all_data")
+--updated and saved the current data called "all_data" and dropped the old table "all_data_union"
 
 drop table `case-study-1-362014.bikeshare.all_data_union`
 
